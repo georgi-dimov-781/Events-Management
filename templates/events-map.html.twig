@@ -1,0 +1,71 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display the events map.
+ *
+ * @ingroup themeable
+ */
+#}
+{{ attach_library('events_management/map') }}
+
+<div class="events-view-navigation">
+  <div class="view-tabs">
+    <a href="{{ path('events_management.events_list') }}" class="view-tab">
+      <span class="tab-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M64 144a48 48 0 1 0 0-96 48 48 0 1 0 0 96zM192 64c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zm0 160c-17.7 0-32 14.3-32 32s14.3 32 32 32H480c17.7 0 32-14.3 32-32s-14.3-32-32-32H192zM64 464a48 48 0 1 0 0-96 48 48 0 1 0 0 96zm48-208a48 48 0 1 0 -96 0 48 48 0 1 0 96 0z"/></svg>
+      </span>
+      {{ 'List View'|t }}
+    </a>
+    <a href="{{ path('events_management.events_calendar') }}" class="view-tab">
+      <span class="tab-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192zm64 80v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H80c-8.8 0-16 7.2-16 16zm128 0v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H208c-8.8 0-16 7.2-16 16zm144-16c-8.8 0-16 7.2-16 16v32c0 8.8 7.2 16 16 16h32c8.8 0 16-7.2 16-16V272c0-8.8-7.2-16-16-16H336z"/></svg>
+      </span>
+      {{ 'Calendar View'|t }}
+    </a>
+    <a href="{{ path('events_management.events_map') }}" class="view-tab active">
+      <span class="tab-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/></svg>
+      </span>
+      {{ 'Map View'|t }}
+    </a>
+  </div>
+</div>
+
+<div class="events-map-wrapper">
+  <div class="map-header">
+    <h1 class="page-title">{{ 'Events Map'|t }}</h1>
+    <p class="map-description">{{ 'Explore upcoming events by location. Click on a marker for event details.'|t }}</p>
+  </div>
+  
+  <div class="events-map-container">
+    <div id="events-map"></div>
+    
+    <div class="map-sidebar">
+      <h3>{{ 'Upcoming Events'|t }}</h3>
+      <div id="map-events-list"></div>
+    </div>
+  </div>
+  
+  <div class="map-legend">
+    <h3>{{ 'Marker Legend'|t }}</h3>
+    <div class="map-legend-item">
+      <span class="map-marker-icon"></span>
+      <span class="map-legend-text">{{ 'Event Location'|t }}</span>
+    </div>
+    <div class="map-legend-item">
+      <span class="map-marker-icon active"></span>
+      <span class="map-legend-text">{{ 'Selected Event'|t }}</span>
+    </div>
+  </div>
+</div>
+
+<!-- Event Popup Template -->
+<template id="event-popup-template">
+  <div class="event-popup">
+    <h3 class="popup-title"></h3>
+    <div class="popup-date"></div>
+    <div class="popup-location"></div>
+    <div class="popup-category"></div>
+    <a class="popup-link" href="#">{{ 'View details'|t }}</a>
+  </div>
+</template> 

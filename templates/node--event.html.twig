@@ -1,0 +1,85 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display an event node.
+ *
+ * Available variables:
+ * - node: The node entity with limited access to object properties and methods.
+ * - label: The title of the node.
+ * - content: All node items. Use {{ content }} to print them all.
+ * - view_mode: View mode; for example, "teaser" or "full".
+ *
+ * @see template_preprocess_node()
+ *
+ * @ingroup themeable
+ */
+#}
+{{ attach_library('events_management/frontend') }}
+
+{% if view_mode == 'full' %}
+  {% include 'event-detail.html.twig' with {
+    'event': node,
+    'content': content
+  } %}
+{% else %}
+  <article{{ attributes }}>
+    {% if view_mode == 'teaser' %}
+      <div class="event-item">
+        {% if content.field_event_image|render %}
+          <div class="event-image">
+            {{ content.field_event_image }}
+          </div>
+        {% elseif node.field_event_image.entity %}
+          <div class="event-image">
+            <img src="{{ file_url(node.field_event_image.entity.uri.value) }}" alt="{{ node.field_event_image.alt }}" />
+          </div>
+        {% endif %}
+        
+        <div class="event-content">
+          <h3 class="event-title">
+            <a href="{{ url('entity.node.canonical', {'node': node.id}) }}">
+              {{ label }}
+            </a>
+          </h3>
+          
+          <div class="event-meta">
+            {% if node.field_event_start_date.value %}
+              <span class="event-date">
+                {{ node.field_event_start_date.value|date('F j, Y - g:i A') }}
+                {% if node.field_event_end_date.value %}
+                  {{ 'to'|t }} {{ node.field_event_end_date.value|date('F j, Y - g:i A') }}
+                {% endif %}
+              </span>
+            {% endif %}
+            
+            {% if node.field_event_country.entity and node.field_event_city.entity %}
+              <span class="event-location">
+                {{ node.field_event_city.entity.label }}, {{ node.field_event_country.entity.label }}
+              </span>
+            {% endif %}
+            
+            {% if node.field_event_category.entity %}
+              <span class="event-category">
+                <span class="event-badge">{{ node.field_event_category.entity.label }}</span>
+              </span>
+            {% endif %}
+          </div>
+          
+          {% if content.field_event_description|render %}
+            <div class="event-description">
+              {{ content.field_event_description }}
+            </div>
+          {% endif %}
+          
+          <a href="{{ url('entity.node.canonical', {'node': node.id}) }}" class="event-read-more">
+            {{ 'Read more'|t }}
+          </a>
+        </div>
+        
+        <div style="clear: both;"></div>
+      </div>
+    {% else %}
+      {{ content }}
+    {% endif %}
+  </article>
+{% endif %} 

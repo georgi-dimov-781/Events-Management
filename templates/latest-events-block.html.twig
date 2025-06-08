@@ -1,0 +1,96 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display latest events block.
+ *
+ * Available variables:
+ * - events: An array of event objects with 'entity' and 'content' keys.
+ *
+ * @ingroup themeable
+ */
+#}
+{{ attach_library('events_management/frontend') }}
+
+<div class="latest-events-block">
+  <div class="block-header">
+    <h2 class="block-title">{{ 'Upcoming Events'|t }}</h2>
+    <a href="{{ path('events_management.events_list') }}" class="view-all-link">{{ 'View all'|t }} <span class="icon">→</span></a>
+  </div>
+  
+  {% if events %}
+    <div class="events-card-container">
+      {% for event_item in events %}
+        {% set event = event_item.entity %}
+        <div class="event-card">
+          {% if event.field_event_image.entity %}
+            <div class="event-card-image">
+              <img src="{{ file_url(event.field_event_image.entity.uri.value) }}" alt="{{ event.field_event_image.alt }}" />
+              
+              {% if event.field_event_category.entity %}
+                <div class="event-card-category">
+                  {{ event.field_event_category.entity.label }}
+                </div>
+              {% endif %}
+            </div>
+          {% endif %}
+          
+          <div class="event-card-content">
+            {% if event.field_event_start_date.value %}
+              <div class="event-card-date">
+                <div class="date-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192z"/></svg>
+                </div>
+                <span>{{ event.field_event_start_date.value|date('M j, Y') }}</span>
+              </div>
+            {% endif %}
+            
+            <h3 class="event-card-title">
+              <a href="{{ path('events_management.event_detail', {'node': event.id}) }}">
+                {{ event.label }}
+              </a>
+            </h3>
+            
+            {% if event.field_event_country.entity and event.field_event_city.entity %}
+              <div class="event-card-location">
+                <div class="location-icon">
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/></svg>
+                </div>
+                <span>{{ event.field_event_city.entity.label }}, {{ event.field_event_country.entity.label }}</span>
+              </div>
+            {% endif %}
+            
+            <div class="event-card-footer">
+              <a href="{{ path('events_management.event_detail', {'node': event.id}) }}" class="event-card-button">
+                {{ 'Details'|t }}
+              </a>
+              
+              <div class="event-countdown" data-date="{{ event.field_event_start_date.value|date('Y/m/d') }}">
+                <div class="countdown-days">
+                  {% set start_date = event.field_event_start_date.value|date('U') %}
+                  {% set current_date = 'now'|date('U') %}
+                  {% set days_until = ((start_date - current_date) / 86400)|round(0, 'floor') %}
+                  <span class="number">{{ days_until > 0 ? days_until : 0 }}</span>
+                  <span class="label">{{ 'days'|t }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      {% endfor %}
+    </div>
+    
+    <div class="events-block-footer">
+      <a href="{{ path('events_management.events_list') }}" class="view-all-button">
+        {{ 'Browse All Events'|t }}
+      </a>
+    </div>
+  {% else %}
+    <div class="no-events-message">
+      <div class="message-icon">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M464 256A208 208 0 1 0 48 256a208 208 0 1 0 416 0zM0 256a256 256 0 1 1 512 0A256 256 0 1 1 0 256zm169.8-90.7c7.9-22.3 29.1-37.3 52.8-37.3h58.3c34.9 0 63.1 28.3 63.1 63.1c0 22.6-12.1 43.5-31.7 54.8L280 264.4c-.2 13-10.9 23.6-24 23.6c-13.3 0-24-10.7-24-24V250.5c0-8.6 4.6-16.5 12.1-20.8l44.3-25.4c4.7-2.7 7.6-7.7 7.6-13.1c0-8.4-6.8-15.1-15.1-15.1H222.6c-3.4 0-6.4 2.1-7.5 5.3l-.4 1.2c-4.4 12.5-18.2 19-30.6 14.6s-19-18.2-14.6-30.6l.4-1.2zM224 352a32 32 0 1 1 64 0 32 32 0 1 1 -64 0z"/></svg>
+      </div>
+      <p>{{ 'No upcoming events scheduled at this moment.'|t }}</p>
+      <a href="{{ path('events_management.past_events') }}" class="view-past-link">{{ 'View our past events'|t }}</a>
+    </div>
+  {% endif %}
+</div> 

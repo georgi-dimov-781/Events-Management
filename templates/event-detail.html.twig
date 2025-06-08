@@ -1,0 +1,108 @@
+{#
+/**
+ * @file
+ * Default theme implementation to display a single event.
+ *
+ * Available variables:
+ * - event: The event node.
+ * - content: The rendered node content.
+ *
+ * @ingroup themeable
+ */
+#}
+{{ attach_library('events_management/frontend') }}
+
+<div class="event-detail-wrapper">
+  <div class="event-detail">
+    <div class="event-hero">
+      {% if content.field_event_image|render %}
+        <div class="event-hero-image">
+          {{ content.field_event_image }}
+          <div class="event-overlay"></div>
+        </div>
+      {% elseif event.field_event_image.entity %}
+        <div class="event-hero-image">
+          <img src="{{ file_url(event.field_event_image.entity.uri.value) }}" alt="{{ event.field_event_image.alt }}" />
+          <div class="event-overlay"></div>
+        </div>
+      {% endif %}
+      
+      <div class="event-hero-content">
+        <h1 class="event-title">{{ event.label }}</h1>
+        
+        {% if event.field_event_category.entity %}
+          <div class="event-category-badge">
+            <span class="event-badge">{{ event.field_event_category.entity.label }}</span>
+          </div>
+        {% endif %}
+      </div>
+    </div>
+    
+    <div class="event-content-container">
+      <div class="event-info-cards">
+        {% if event.field_event_start_date.value %}
+          <div class="event-info-card event-date-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512"><path d="M128 0c17.7 0 32 14.3 32 32V64H288V32c0-17.7 14.3-32 32-32s32 14.3 32 32V64h48c26.5 0 48 21.5 48 48v48H0V112C0 85.5 21.5 64 48 64H96V32c0-17.7 14.3-32 32-32zM0 192H448V464c0 26.5-21.5 48-48 48H48c-26.5 0-48-21.5-48-48V192z"/></svg>
+            </div>
+            <div class="card-content">
+              <h3>{{ 'Date & Time'|t }}</h3>
+              <div class="date-info">
+                <div class="date-item">
+                  <span class="date-label">{{ 'Start'|t }}</span>
+                  <span class="date-value">{{ event.field_event_start_date.value|date('F j, Y') }}</span>
+                  <span class="time-value">{{ event.field_event_start_date.value|date('g:i A') }}</span>
+                </div>
+                {% if event.field_event_end_date.value %}
+                  <div class="date-item">
+                    <span class="date-label">{{ 'End'|t }}</span>
+                    <span class="date-value">{{ event.field_event_end_date.value|date('F j, Y') }}</span>
+                    <span class="time-value">{{ event.field_event_end_date.value|date('g:i A') }}</span>
+                  </div>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        
+        {% if event.field_event_country.entity and event.field_event_city.entity %}
+          <div class="event-info-card event-location-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512"><path d="M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z"/></svg>
+            </div>
+            <div class="card-content">
+              <h3>{{ 'Location'|t }}</h3>
+              <div class="location-info">
+                <span class="city">{{ event.field_event_city.entity.label }}</span>
+                <span class="country">{{ event.field_event_country.entity.label }}</span>
+              </div>
+            </div>
+          </div>
+        {% endif %}
+        
+        {% if event.field_event_category.entity %}
+          <div class="event-info-card event-category-card">
+            <div class="card-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><path d="M345 39.1L472.8 168.4c52.4 53 52.4 138.2 0 191.2L360.8 472.9c-9.3 9.4-24.5 9.5-33.9 .2s-9.5-24.5-.2-33.9L438.6 325.9c33.9-34.3 33.9-89.4 0-123.7L310.9 72.9c-9.3-9.4-9.2-24.6 .2-33.9s24.6-9.2 33.9 .2zM0 229.5V80C0 53.5 21.5 32 48 32H197.5c17 0 33.3 6.7 45.3 18.7l168 168c25 25 25 65.5 0 90.5L277.3 442.7c-25 25-65.5 25-90.5 0l-168-168C6.7 262.7 0 246.5 0 229.5zM144 144a32 32 0 1 0 -64 0 32 32 0 1 0 64 0z"/></svg>
+            </div>
+            <div class="card-content">
+              <h3>{{ 'Category'|t }}</h3>
+              <div class="category-info">
+                {{ event.field_event_category.entity.label }}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+      </div>
+      
+      {% if event.field_event_description.value %}
+        <div class="event-description">
+          <h2>{{ 'About This Event'|t }}</h2>
+          <div class="description-content">
+            {{ event.field_event_description.value|raw }}
+          </div>
+        </div>
+      {% endif %}
+    </div>
+  </div>
+</div> 
