@@ -1,0 +1,33 @@
+events_management.admin_settings:
+  title: 'Events Management Settings'
+  description: 'Configure event settings and options'
+  parent: system.admin_config
+  route_name: events_management.admin_settings
+  weight: 100
+
+events_management.events_list:
+  title: 'Events'
+  menu_name: main
+  route_name: events_management.events_list
+  weight: 10
+
+events_management.events_calendar:
+  title: 'Events Calendar'
+  menu_name: main
+  route_name: events_management.events_calendar
+  parent: events_management.events_list
+  weight: 10
+
+events_management.events_map:
+  title: 'Events Map'
+  menu_name: main
+  route_name: events_management.events_map
+  parent: events_management.events_list
+  weight: 20
+
+events_management.past_events:
+  title: 'Past Events'
+  menu_name: main
+  route_name: events_management.past_events
+  parent: events_management.events_list
+  weight: 30 

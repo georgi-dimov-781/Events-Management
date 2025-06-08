@@ -1,0 +1,80 @@
+events_management.admin_settings:
+  path: '/admin/config/events-management/settings'
+  defaults:
+    _form: '\Drupal\events_management\Form\EventsManagementSettingsForm'
+    _title: 'Events Management Settings'
+  requirements:
+    _permission: 'administer site configuration'
+
+events_management.events_list:
+  path: '/events'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsController::eventsList'
+    _title: 'Events'
+  requirements:
+    _access: 'TRUE'
+
+events_management.past_events:
+  path: '/events/past'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsController::pastEventsList'
+    _title: 'Past Events'
+  requirements:
+    _access: 'TRUE'
+
+events_management.events_calendar:
+  path: '/events/calendar'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsCalendarController::calendarView'
+    _title: 'Events Calendar'
+  requirements:
+    _access: 'TRUE'
+
+events_management.calendar_events_json:
+  path: '/events/calendar-json'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsCalendarController::getEventsJson'
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
+
+events_management.events_map:
+  path: '/events/map'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsMapController::mapView'
+    _title: 'Events Map'
+  requirements:
+    _access: 'TRUE'
+
+events_management.map_events_json:
+  path: '/events/map-json'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsMapController::getEventsJson'
+  requirements:
+    _access: 'TRUE'
+  options:
+    no_cache: TRUE
+
+events_management.event_detail:
+  path: '/events/{node}'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\EventsController::eventDetail'
+    _title_callback: '\Drupal\events_management\Controller\EventsController::eventDetailTitle'
+  requirements:
+    _access: 'TRUE'
+    node: \d+
+  options:
+    parameters:
+      node:
+        type: entity:node
+
+events_management.cities_ajax:
+  path: '/events-management/ajax/cities'
+  defaults:
+    _controller: '\Drupal\events_management\Controller\CitiesAjaxController::getCitiesByCountry'
+    _title: 'Get cities by country'
+  requirements:
+    _permission: 'access content'
+  options:
+    no_cache: TRUE 
