@@ -1,0 +1,748 @@
+<?php
+
+/**
+ * @file
+ * Install, update and uninstall functions for the Events Management module.
+ */
+
+use Drupal\Core\Database\Database;
+use Drupal\taxonomy\Entity\Vocabulary;
+use Drupal\taxonomy\Entity\Term;
+use Drupal\node\Entity\NodeType;
+use Drupal\Core\Entity\Entity\EntityFormDisplay;
+use Drupal\Core\Entity\Entity\EntityViewDisplay;
+use Drupal\field\Entity\FieldStorageConfig;
+use Drupal\field\Entity\FieldConfig;
+use Drupal\Core\Config\FileStorage;
+use Drupal\Core\Config\ConfigFactory;
+
+/**
+ * Implements hook_schema().
+ */
+function events_management_schema() {
+  $schema['events_management_config_log'] = [
+    'description' => 'Logs configuration changes for Events Management module.',
+    'fields' => [
+      'id' => [
+        'type' => 'serial',
+        'not null' => TRUE,
+        'description' => 'Primary Key: Unique log ID.',
+      ],
+      'uid' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'User ID who made the change.',
+      ],
+      'config_key' => [
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => TRUE,
+        'default' => '',
+        'description' => 'Configuration key that was changed.',
+      ],
+      'old_value' => [
+        'type' => 'text',
+        'size' => 'medium',
+        'description' => 'Previous configuration value.',
+      ],
+      'new_value' => [
+        'type' => 'text',
+        'size' => 'medium',
+        'description' => 'New configuration value.',
+      ],
+      'timestamp' => [
+        'type' => 'int',
+        'not null' => TRUE,
+        'default' => 0,
+        'description' => 'Unix timestamp when the change occurred.',
+      ],
+    ],
+    'primary key' => ['id'],
+    'indexes' => [
+      'uid' => ['uid'],
+      'config_key' => ['config_key'],
+      'timestamp' => ['timestamp'],
+    ],
+  ];
+  return $schema;
+}
+
+/**
+ * Implements hook_install().
+ */
+function events_management_install() {
+  // Create event categories vocabulary.
+  _events_management_create_vocabulary();
+  
+  // Create event countries vocabulary.
+  _events_management_create_countries_vocabulary();
+  
+  // Create event cities vocabulary.
+  _events_management_create_cities_vocabulary();
+  
+  // Create event content type.
+  _events_management_create_content_type();
+  
+  // Configure form display and view display for Event content type.
+  _events_management_configure_displays();
+}
+
+/**
+ * Implements hook_uninstall().
+ */
+function events_management_uninstall() {
+  // Drop the configuration log table.
+  $schema = Database::getConnection()->schema();
+  if ($schema->tableExists('events_management_config_log')) {
+    $schema->dropTable('events_management_config_log');
+  }
+  
+  // Remove module settings.
+  \Drupal::configFactory()->getEditable('events_management.settings')->delete();
+  
+  // Delete all the fields created by the module.
+  $fields = [
+    'node.field_event_image',
+    'node.field_event_description',
+    'node.field_event_start_date',
+    'node.field_event_end_date',
+    'node.field_event_category',
+    'node.field_event_country',
+    'node.field_event_city',
+    'taxonomy_term.field_country_reference',
+  ];
+  
+  foreach ($fields as $field_id) {
+    $field = FieldStorageConfig::loadByName(explode('.', $field_id)[0], explode('.', $field_id)[1]);
+    if ($field) {
+      $field->delete();
+    }
+  }
+  
+  // Delete all field configurations.
+  $field_configs = [
+    'field.field.node.event.field_event_image',
+    'field.field.node.event.field_event_description',
+    'field.field.node.event.field_event_start_date',
+    'field.field.node.event.field_event_end_date',
+    'field.field.node.event.field_event_category',
+    'field.field.node.event.field_event_country',
+    'field.field.node.event.field_event_city',
+    'field.field.taxonomy_term.event_cities.field_country_reference',
+  ];
+  
+  foreach ($field_configs as $config_id) {
+    \Drupal::configFactory()->getEditable($config_id)->delete();
+  }
+  
+  // Delete the event content type.
+  $content_type = NodeType::load('event');
+  if ($content_type) {
+    $content_type->delete();
+  }
+  
+  // Delete the form and view displays.
+  $displays = [
+    'core.entity_form_display.node.event.default',
+    'core.entity_view_display.node.event.default',
+    'core.entity_view_display.node.event.teaser',
+  ];
+  
+  foreach ($displays as $display) {
+    \Drupal::configFactory()->getEditable($display)->delete();
+  }
+  
+  // Delete the vocabularies.
+  $vocabularies = [
+    'event_categories',
+    'event_cities',
+    'event_countries',
+  ];
+  
+  foreach ($vocabularies as $vocab_id) {
+    $vocabulary = Vocabulary::load($vocab_id);
+    if ($vocabulary) {
+      $vocabulary->delete();
+    }
+  }
+  
+  // Delete taxonomy vocabulary configurations.
+  $vocab_configs = [
+    'taxonomy.vocabulary.event_categories',
+    'taxonomy.vocabulary.event_cities',
+    'taxonomy.vocabulary.event_countries',
+  ];
+  
+  foreach ($vocab_configs as $config_id) {
+    \Drupal::configFactory()->getEditable($config_id)->delete();
+  }
+  
+  // Delete any other configurations created by this module.
+  $config_factory = \Drupal::configFactory();
+  $configs_to_delete = [
+    'field.storage.node.field_event_image',
+    'field.storage.node.field_event_description',
+    'field.storage.node.field_event_start_date',
+    'field.storage.node.field_event_end_date',
+    'field.storage.node.field_event_category',
+    'field.storage.node.field_event_country',
+    'field.storage.node.field_event_city',
+    'field.storage.taxonomy_term.field_country_reference',
+    'node.type.event',
+  ];
+  
+  foreach ($configs_to_delete as $config) {
+    $config_factory->getEditable($config)->delete();
+  }
+  
+  // Clear all caches to ensure everything is properly removed.
+  drupal_flush_all_caches();
+}
+
+/**
+ * Create event categories vocabulary.
+ */
+function _events_management_create_vocabulary() {
+  $vocabulary = Vocabulary::create([
+    'vid' => 'event_categories',
+    'name' => 'Event Categories',
+    'description' => 'Categories for events',
+  ]);
+  $vocabulary->save();
+  
+  // Add some default categories.
+  $categories = ['Conference', 'Workshop', 'Seminar', 'Webinar', 'Meetup', 'Training'];
+  foreach ($categories as $category) {
+    $term = Term::create([
+      'vid' => 'event_categories',
+      'name' => $category,
+    ]);
+    $term->save();
+  }
+}
+
+/**
+ * Create event countries vocabulary.
+ */
+function _events_management_create_countries_vocabulary() {
+  $vocabulary = Vocabulary::create([
+    'vid' => 'event_countries',
+    'name' => 'Event Countries',
+    'description' => 'Countries for events',
+  ]);
+  $vocabulary->save();
+  
+  // Add some default countries.
+  $countries = ['United States', 'United Kingdom', 'Germany', 'France', 'Bulgaria', 'Canada', 'Australia'];
+  foreach ($countries as $country) {
+    $term = Term::create([
+      'vid' => 'event_countries',
+      'name' => $country,
+    ]);
+    $term->save();
+  }
+}
+
+/**
+ * Create event cities vocabulary.
+ */
+function _events_management_create_cities_vocabulary() {
+  $vocabulary = Vocabulary::create([
+    'vid' => 'event_cities',
+    'name' => 'Event Cities',
+    'description' => 'Cities for events',
+  ]);
+  $vocabulary->save();
+  
+  // Create a field to reference countries
+  $field_storage_config = \Drupal::entityTypeManager()->getStorage('field_storage_config');
+  $field_config = \Drupal::entityTypeManager()->getStorage('field_config');
+  
+  // Create the field_country_reference field storage if it doesn't exist
+  if (!$field_storage_config->load('taxonomy_term.field_country_reference')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_country_reference',
+      'entity_type' => 'taxonomy_term',
+      'type' => 'entity_reference',
+      'cardinality' => 1,
+      'settings' => [
+        'target_type' => 'taxonomy_term',
+      ],
+    ]);
+    $field_storage->save();
+    
+    // Add the field to the event_cities vocabulary
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event_cities',
+      'label' => 'Country',
+      'required' => TRUE,
+      'settings' => [
+        'handler' => 'default:taxonomy_term',
+        'handler_settings' => [
+          'target_bundles' => [
+            'event_countries' => 'event_countries',
+          ],
+        ],
+      ],
+    ]);
+    $field->save();
+  }
+  
+  // Add default cities mapped to countries
+  $cities_by_country = [
+    'United States' => ['New York', 'Los Angeles', 'Chicago', 'San Francisco', 'Boston', 'Seattle'],
+    'United Kingdom' => ['London', 'Manchester', 'Birmingham', 'Liverpool', 'Edinburgh', 'Glasgow'],
+    'Germany' => ['Berlin', 'Munich', 'Hamburg', 'Frankfurt', 'Cologne', 'Dresden'],
+    'France' => ['Paris', 'Lyon', 'Marseille', 'Nice', 'Bordeaux', 'Toulouse'],
+    'Bulgaria' => ['Sofia', 'Plovdiv', 'Varna', 'Burgas', 'Ruse', 'Stara Zagora'],
+    'Canada' => ['Toronto', 'Vancouver', 'Montreal', 'Calgary', 'Ottawa', 'Edmonton'],
+    'Australia' => ['Sydney', 'Melbourne', 'Brisbane', 'Perth', 'Adelaide', 'Canberra'],
+  ];
+  
+  // Load country terms
+  $country_terms = [];
+  $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+  $country_terms_query = $term_storage->getQuery()
+    ->condition('vid', 'event_countries')
+    ->accessCheck(FALSE)
+    ->execute();
+  
+  if (!empty($country_terms_query)) {
+    $country_entities = $term_storage->loadMultiple($country_terms_query);
+    foreach ($country_entities as $entity) {
+      $country_terms[$entity->getName()] = $entity->id();
+    }
+  }
+  
+  // Create city terms with parent reference to appropriate country
+  foreach ($cities_by_country as $country => $cities) {
+    if (isset($country_terms[$country])) {
+      $country_id = $country_terms[$country];
+      foreach ($cities as $city) {
+        $term = Term::create([
+          'vid' => 'event_cities',
+          'name' => $city,
+          'field_country_reference' => [
+            'target_id' => $country_id,
+          ],
+        ]);
+        $term->save();
+      }
+    }
+  }
+}
+
+/**
+ * Create event content type.
+ */
+function _events_management_create_content_type() {
+  $node_type = NodeType::create([
+    'type' => 'event',
+    'name' => 'Event',
+    'base' => 'node_content',
+    'description' => 'Create and manage events',
+    'custom' => 1,
+    'modified' => 1,
+    'locked' => 0,
+  ]);
+  $node_type->save();
+  
+  // Create fields for the event content type.
+  _events_management_create_fields();
+}
+
+/**
+ * Create fields for event content type.
+ */
+function _events_management_create_fields() {
+  $field_storage_config = \Drupal::entityTypeManager()->getStorage('field_storage_config');
+  $field_config = \Drupal::entityTypeManager()->getStorage('field_config');
+  
+  // Event image field.
+  if (!$field_storage_config->load('node.field_event_image')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_image',
+      'entity_type' => 'node',
+      'type' => 'image',
+      'cardinality' => 1,
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'Event Image',
+      'required' => TRUE,
+    ]);
+    $field->save();
+  }
+  
+  // Event description field.
+  if (!$field_storage_config->load('node.field_event_description')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_description',
+      'entity_type' => 'node',
+      'type' => 'text_long',
+      'cardinality' => 1,
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'Description',
+      'required' => TRUE,
+    ]);
+    $field->save();
+  }
+  
+  // Event start date field.
+  if (!$field_storage_config->load('node.field_event_start_date')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_start_date',
+      'entity_type' => 'node',
+      'type' => 'datetime',
+      'cardinality' => 1,
+      'settings' => [
+        'datetime_type' => 'datetime',
+      ],
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'Start Date & Time',
+      'required' => TRUE,
+    ]);
+    $field->save();
+  }
+  
+  // Event end date field.
+  if (!$field_storage_config->load('node.field_event_end_date')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_end_date',
+      'entity_type' => 'node',
+      'type' => 'datetime',
+      'cardinality' => 1,
+      'settings' => [
+        'datetime_type' => 'datetime',
+      ],
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'End Date & Time',
+      'required' => TRUE,
+    ]);
+    $field->save();
+  }
+  
+  // Event category field.
+  if (!$field_storage_config->load('node.field_event_category')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_category',
+      'entity_type' => 'node',
+      'type' => 'entity_reference',
+      'cardinality' => 1,
+      'settings' => [
+        'target_type' => 'taxonomy_term',
+      ],
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'Category',
+      'required' => TRUE,
+      'settings' => [
+        'handler' => 'default:taxonomy_term',
+        'handler_settings' => [
+          'target_bundles' => [
+            'event_categories' => 'event_categories',
+          ],
+        ],
+      ],
+    ]);
+    $field->save();
+  }
+  
+  // Event country field.
+  if (!$field_storage_config->load('node.field_event_country')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_country',
+      'entity_type' => 'node',
+      'type' => 'entity_reference',
+      'cardinality' => 1,
+      'settings' => [
+        'target_type' => 'taxonomy_term',
+      ],
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'Country',
+      'required' => TRUE,
+      'settings' => [
+        'handler' => 'default:taxonomy_term',
+        'handler_settings' => [
+          'target_bundles' => [
+            'event_countries' => 'event_countries',
+          ],
+        ],
+      ],
+    ]);
+    $field->save();
+  }
+  
+  // Event city field.
+  if (!$field_storage_config->load('node.field_event_city')) {
+    $field_storage = $field_storage_config->create([
+      'field_name' => 'field_event_city',
+      'entity_type' => 'node',
+      'type' => 'entity_reference',
+      'cardinality' => 1,
+      'settings' => [
+        'target_type' => 'taxonomy_term',
+      ],
+    ]);
+    $field_storage->save();
+    
+    $field = $field_config->create([
+      'field_storage' => $field_storage,
+      'bundle' => 'event',
+      'label' => 'City',
+      'required' => TRUE,
+      'settings' => [
+        'handler' => 'default:taxonomy_term',
+        'handler_settings' => [
+          'target_bundles' => [
+            'event_cities' => 'event_cities',
+          ],
+        ],
+      ],
+    ]);
+    $field->save();
+  }
+}
+
+/**
+ * Configure form display and view display for event content type.
+ */
+function _events_management_configure_displays() {
+  // Configure the form display.
+  $form_display = EntityFormDisplay::load('node.event.default');
+  if (!$form_display) {
+    $form_display = EntityFormDisplay::create([
+      'targetEntityType' => 'node',
+      'bundle' => 'event',
+      'mode' => 'default',
+      'status' => TRUE,
+    ]);
+  }
+  
+  // Configure field widgets with proper order and settings.
+  $form_display
+    ->setComponent('title', [
+      'type' => 'string_textfield',
+      'weight' => 0,
+      'settings' => [
+        'size' => 60,
+        'placeholder' => '',
+      ],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_image', [
+      'type' => 'image_image',
+      'weight' => 1,
+      'settings' => [
+        'progress_indicator' => 'throbber',
+        'preview_image_style' => 'thumbnail',
+      ],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_description', [
+      'type' => 'text_textarea',
+      'weight' => 2,
+      'settings' => [
+        'rows' => 5,
+        'placeholder' => '',
+      ],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_start_date', [
+      'type' => 'datetime_default',
+      'weight' => 3,
+      'settings' => [],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_end_date', [
+      'type' => 'datetime_default',
+      'weight' => 4,
+      'settings' => [],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_category', [
+      'type' => 'options_select',
+      'weight' => 5,
+      'settings' => [],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_country', [
+      'type' => 'options_select',
+      'weight' => 6,
+      'settings' => [],
+      'third_party_settings' => [],
+    ])
+    ->setComponent('field_event_city', [
+      'type' => 'options_select',
+      'weight' => 7,
+      'settings' => [],
+      'third_party_settings' => [],
+    ]);
+  
+  $form_display->save();
+  
+  // Configure the view display.
+  $view_display = EntityViewDisplay::load('node.event.default');
+  if (!$view_display) {
+    $view_display = EntityViewDisplay::create([
+      'targetEntityType' => 'node',
+      'bundle' => 'event',
+      'mode' => 'default',
+      'status' => TRUE,
+    ]);
+  }
+  
+  // Configure field formatters with proper order and settings.
+  $view_display
+    ->setComponent('field_event_image', [
+      'type' => 'image',
+      'weight' => 0,
+      'settings' => [
+        'image_style' => 'large',
+        'image_link' => '',
+      ],
+      'third_party_settings' => [],
+      'label' => 'hidden',
+    ])
+    ->setComponent('field_event_description', [
+      'type' => 'text_default',
+      'weight' => 1,
+      'settings' => [],
+      'third_party_settings' => [],
+      'label' => 'hidden',
+    ])
+    ->setComponent('field_event_start_date', [
+      'type' => 'datetime_default',
+      'weight' => 2,
+      'settings' => [
+        'format_type' => 'medium',
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('field_event_end_date', [
+      'type' => 'datetime_default',
+      'weight' => 3,
+      'settings' => [
+        'format_type' => 'medium',
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('field_event_category', [
+      'type' => 'entity_reference_label',
+      'weight' => 4,
+      'settings' => [
+        'link' => TRUE,
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('field_event_country', [
+      'type' => 'entity_reference_label',
+      'weight' => 5,
+      'settings' => [
+        'link' => TRUE,
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('field_event_city', [
+      'type' => 'entity_reference_label',
+      'weight' => 6,
+      'settings' => [
+        'link' => TRUE,
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ]);
+  
+  $view_display->save();
+  
+  // Create teaser view mode
+  $teaser_display = EntityViewDisplay::load('node.event.teaser');
+  if (!$teaser_display) {
+    $teaser_display = EntityViewDisplay::create([
+      'targetEntityType' => 'node',
+      'bundle' => 'event',
+      'mode' => 'teaser',
+      'status' => TRUE,
+    ]);
+  }
+  
+  // Configure teaser display
+  $teaser_display
+    ->setComponent('field_event_image', [
+      'type' => 'image',
+      'weight' => 0,
+      'settings' => [
+        'image_style' => 'medium',
+        'image_link' => 'content',
+      ],
+      'third_party_settings' => [],
+      'label' => 'hidden',
+    ])
+    ->setComponent('field_event_description', [
+      'type' => 'text_summary_or_trimmed',
+      'weight' => 1,
+      'settings' => [
+        'trim_length' => 200,
+      ],
+      'third_party_settings' => [],
+      'label' => 'hidden',
+    ])
+    ->setComponent('field_event_start_date', [
+      'type' => 'datetime_default',
+      'weight' => 2,
+      'settings' => [
+        'format_type' => 'short',
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('field_event_category', [
+      'type' => 'entity_reference_label',
+      'weight' => 3,
+      'settings' => [
+        'link' => FALSE,
+      ],
+      'third_party_settings' => [],
+      'label' => 'inline',
+    ])
+    ->setComponent('links', [
+      'weight' => 4,
+      'settings' => [],
+      'third_party_settings' => [],
+    ]);
+  
+  $teaser_display->save();
+} 

@@ -1,0 +1,4 @@
+'manage events configuration':
+  title: 'Manage Events Configuration'
+  description: 'Allows users to configure events management settings'
+  restrict access: TRUE 

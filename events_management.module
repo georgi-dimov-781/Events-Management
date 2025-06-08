@@ -1,0 +1,358 @@
+<?php
+
+/**
+ * @file
+ * Contains events_management.module.
+ */
+
+use Drupal\Core\Form\FormStateInterface;
+use Drupal\Core\Routing\RouteMatchInterface;
+use Drupal\Core\Database\Database;
+use Drupal\Core\Entity\EntityInterface;
+use Drupal\node\Entity\Node;
+use Drupal\taxonomy\Entity\Term;
+
+/**
+ * Implements hook_help().
+ */
+function events_management_help($route_name, RouteMatchInterface $route_match) {
+  switch ($route_name) {
+    case 'help.page.events_management':
+      $output = '';
+      $output .= '<h3>' . t('About') . '</h3>';
+      $output .= '<p>' . t('The Events Management module provides a comprehensive system for managing events in Drupal.') . '</p>';
+      $output .= '<h3>' . t('Features') . '</h3>';
+      $output .= '<ul>';
+      $output .= '<li>' . t('Event content type with all necessary fields') . '</li>';
+      $output .= '<li>' . t('Configuration page to manage module settings') . '</li>';
+      $output .= '<li>' . t('Front-end listing and detail pages') . '</li>';
+      $output .= '<li>' . t('Latest events block') . '</li>';
+      $output .= '</ul>';
+      return $output;
+  }
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function events_management_form_node_event_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Add custom validation for date fields.
+  $form['#validate'][] = 'events_management_event_form_validate';
+  
+  // Add JavaScript for city auto-population.
+  $form['#attached']['library'][] = 'events_management/admin';
+  
+  // Make city field dependent on country field
+  $form['field_event_city']['#states'] = [
+    'enabled' => [
+      ':input[name="field_event_country[0][target_id]"]' => ['!value' => ''],
+    ],
+  ];
+  
+  // Restrict city options based on selected country
+  $country_id = $form_state->getValue(['field_event_country', 0, 'target_id']);
+  if (!empty($country_id)) {
+    // Get cities for selected country
+    $city_ids = \Drupal::entityQuery('taxonomy_term')
+      ->condition('vid', 'event_cities')
+      ->condition('field_country_reference.target_id', $country_id)
+      ->accessCheck(FALSE)
+      ->execute();
+      
+    if (!empty($city_ids)) {
+      // Get city terms and update the options
+      $city_terms = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadMultiple($city_ids);
+      $options = ['' => t('- Select -')];
+      
+      foreach ($city_terms as $term) {
+        $options[$term->id()] = $term->label();
+      }
+      
+      $form['field_event_city']['widget']['#options'] = $options;
+    }
+  }
+  
+  // Attach AJAX behavior to the country field.
+  $form['field_event_country']['widget']['#ajax'] = [
+    'callback' => 'events_management_country_ajax_callback',
+    'wrapper' => 'event-city-wrapper',
+    'event' => 'change',
+  ];
+  
+  // Add wrapper to city field for AJAX replacement.
+  $form['field_event_city']['#prefix'] = '<div id="event-city-wrapper">';
+  $form['field_event_city']['#suffix'] = '</div>';
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function events_management_form_node_event_edit_form_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Use the same form alter function for both add and edit forms
+  events_management_form_node_event_form_alter($form, $form_state, $form_id);
+}
+
+/**
+ * Implements hook_form_FORM_ID_alter().
+ */
+function events_management_form_events_management_admin_settings_alter(&$form, FormStateInterface $form_state, $form_id) {
+  // Store the original values before form submission.
+  $config = \Drupal::config('events_management.settings');
+  $original_values = [];
+  
+  foreach ($config->getRawData() as $key => $value) {
+    $original_values[$key] = $value;
+  }
+  
+  // Store the original values in the form state for later use.
+  $form_state->set('original_values', $original_values);
+  
+  // Add a custom submit handler.
+  $form['#submit'][] = 'events_management_settings_form_submit';
+}
+
+/**
+ * Custom submit handler for the settings form.
+ */
+function events_management_settings_form_submit($form, FormStateInterface $form_state) {
+  $original_values = $form_state->get('original_values');
+  
+  // Get the new values from the form state.
+  $new_show_past_events = $form_state->getValue('show_past_events');
+  $new_events_per_page = $form_state->getValue('events_per_page');
+  
+  // Log configuration changes directly from the form submission.
+  if (isset($original_values['show_past_events']) && $original_values['show_past_events'] !== $new_show_past_events) {
+    events_management_log_config_change('show_past_events', $original_values['show_past_events'], $new_show_past_events);
+  }
+  
+  if (isset($original_values['events_per_page']) && $original_values['events_per_page'] !== $new_events_per_page) {
+    events_management_log_config_change('events_per_page', $original_values['events_per_page'], $new_events_per_page);
+  }
+}
+
+/**
+ * Custom validation for event form.
+ */
+function events_management_event_form_validate($form, FormStateInterface $form_state) {
+  $start_date = $form_state->getValue(['field_event_start_date', 0, 'value']);
+  $end_date = $form_state->getValue(['field_event_end_date', 0, 'value']);
+  
+  if ($start_date && $end_date) {
+    // Handle both string and DateTime object cases
+    if (is_object($start_date) && $start_date instanceof \DateTime) {
+      $start_timestamp = $start_date->getTimestamp();
+    } elseif (is_string($start_date)) {
+      $start_timestamp = strtotime($start_date);
+    } else {
+      // Skip validation if we can't determine the timestamp
+      return;
+    }
+    
+    if (is_object($end_date) && $end_date instanceof \DateTime) {
+      $end_timestamp = $end_date->getTimestamp();
+    } elseif (is_string($end_date)) {
+      $end_timestamp = strtotime($end_date);
+    } else {
+      // Skip validation if we can't determine the timestamp
+      return;
+    }
+    
+    if ($end_timestamp < $start_timestamp) {
+      $form_state->setErrorByName('field_event_end_date', t('End date cannot be earlier than start date.'));
+    }
+  }
+}
+
+/**
+ * Log configuration changes.
+ */
+function events_management_log_config_change($config_key, $old_value, $new_value) {
+  $connection = Database::getConnection();
+  $connection->insert('events_management_config_log')
+    ->fields([
+      'uid' => \Drupal::currentUser()->id(),
+      'config_key' => $config_key,
+      'old_value' => serialize($old_value),
+      'new_value' => serialize($new_value),
+      'timestamp' => time(),
+    ])
+    ->execute();
+}
+
+/**
+ * AJAX callback for country field.
+ */
+function events_management_country_ajax_callback(array &$form, FormStateInterface $form_state) {
+  $country_id = $form_state->getValue(['field_event_country', 0, 'target_id']);
+  
+  // Clear existing options and add default
+  $form['field_event_city']['widget']['#options'] = ['' => t('- Select -')];
+  
+  if (!empty($country_id)) {
+    // Get cities for the selected country
+    $city_ids = \Drupal::entityQuery('taxonomy_term')
+      ->condition('vid', 'event_cities')
+      ->condition('field_country_reference.target_id', $country_id)
+      ->accessCheck(FALSE)
+      ->execute();
+      
+    if (!empty($city_ids)) {
+      $city_terms = \Drupal::entityTypeManager()->getStorage('taxonomy_term')->loadMultiple($city_ids);
+      
+      // Add city options
+      foreach ($city_terms as $term) {
+        $form['field_event_city']['widget']['#options'][$term->id()] = $term->label();
+      }
+      
+      // Enable the field
+      $form['field_event_city']['widget']['#disabled'] = FALSE;
+    } else {
+      // No cities available for this country
+      $form['field_event_city']['widget']['#options'][0] = t('No cities available for this country');
+      $form['field_event_city']['widget']['#disabled'] = TRUE;
+    }
+  } else {
+    // No country selected, disable city field
+    $form['field_event_city']['widget']['#options'][0] = t('Select a country first');
+    $form['field_event_city']['widget']['#disabled'] = TRUE;
+  }
+  
+  // Return the city field with updated options
+  return $form['field_event_city'];
+}
+
+/**
+ * Implements hook_theme().
+ */
+function events_management_theme($existing, $type, $theme, $path) {
+  return [
+    'events_listing' => [
+      'variables' => [
+        'events' => [],
+        'pager' => NULL,
+      ],
+      'template' => 'events-listing',
+    ],
+    'past_events_listing' => [
+      'variables' => [
+        'events' => [],
+        'pager' => NULL,
+      ],
+      'template' => 'past-events-listing',
+    ],
+    'event_detail' => [
+      'variables' => [
+        'event' => NULL,
+        'content' => NULL,
+      ],
+      'template' => 'event-detail',
+    ],
+    'events_calendar' => [
+      'variables' => [],
+      'template' => 'events-calendar',
+    ],
+    'events_map' => [
+      'variables' => [],
+      'template' => 'events-map',
+    ],
+    'latest_events_block' => [
+      'variables' => [
+        'events' => [],
+      ],
+      'template' => 'latest-events-block',
+    ],
+  ];
+}
+
+/**
+ * Implements hook_module_preuninstall().
+ */
+function events_management_module_preuninstall($module) {
+  if ($module !== 'events_management') {
+    return;
+  }
+  
+  // Delete all events (nodes of type 'event')
+  $event_ids = \Drupal::entityQuery('node')
+    ->condition('type', 'event')
+    ->accessCheck(FALSE)
+    ->execute();
+    
+  if (!empty($event_ids)) {
+    $storage = \Drupal::entityTypeManager()->getStorage('node');
+    $events = $storage->loadMultiple($event_ids);
+    $storage->delete($events);
+    \Drupal::logger('events_management')->notice('Deleted @count event nodes during uninstall.', ['@count' => count($event_ids)]);
+  }
+  
+  // Delete all taxonomy terms in the vocabularies created by this module
+  $vocabularies = ['event_categories', 'event_cities', 'event_countries'];
+  foreach ($vocabularies as $vocabulary) {
+    $term_ids = \Drupal::entityQuery('taxonomy_term')
+      ->condition('vid', $vocabulary)
+      ->accessCheck(FALSE)
+      ->execute();
+      
+    if (!empty($term_ids)) {
+      $term_storage = \Drupal::entityTypeManager()->getStorage('taxonomy_term');
+      $terms = $term_storage->loadMultiple($term_ids);
+      $term_storage->delete($terms);
+      \Drupal::logger('events_management')->notice('Deleted @count taxonomy terms from @vocabulary vocabulary during uninstall.', 
+        ['@count' => count($term_ids), '@vocabulary' => $vocabulary]);
+    }
+  }
+
+  // Clear caches to ensure entity type definitions are updated
+  drupal_flush_all_caches();
+}
+
+/**
+ * Implements hook_node_view().
+ */
+function events_management_node_view(array &$build, \Drupal\Core\Entity\EntityInterface $entity, \Drupal\Core\Entity\Display\EntityViewDisplayInterface $display, $view_mode) {
+  // Apply our custom theme when viewing an event node directly
+  if ($entity->getEntityTypeId() === 'node' && $entity->bundle() === 'event' && $view_mode === 'full') {
+    // Get the current route
+    $route_name = \Drupal::routeMatch()->getRouteName();
+    
+    // Only modify the default node view route, not our custom route
+    if ($route_name === 'entity.node.canonical') {
+      $view_builder = \Drupal::entityTypeManager()->getViewBuilder('node');
+      $content = $view_builder->view($entity, 'full');
+      
+      // Preserve the original #node key which is required by EntityViewController
+      $node_key = $build['#node'] ?? $entity;
+      
+      // Store the original content renderings
+      $preserved_content = [];
+      foreach (['field_event_image', 'field_event_description', 'field_event_start_date', 
+                'field_event_end_date', 'field_event_category', 'field_event_country', 
+                'field_event_city'] as $field_name) {
+        if (isset($build[$field_name])) {
+          $preserved_content[$field_name] = $build[$field_name];
+        }
+      }
+      
+      $build = [
+        '#theme' => 'event_detail',
+        '#event' => $entity,
+        '#content' => $content,
+        '#node' => $node_key, // Preserve the #node key for the title callback
+        '#cache' => [
+          'tags' => $entity->getCacheTags(),
+        ],
+      ];
+      
+      // Add preserved content renderings
+      foreach ($preserved_content as $field_name => $field_content) {
+        $build['#content'][$field_name] = $field_content;
+      }
+      
+      // Ensure the image is rendered
+      if (!isset($build['#content']['field_event_image']) && $entity->hasField('field_event_image') && !$entity->get('field_event_image')->isEmpty()) {
+        $build['#content']['field_event_image'] = $view_builder->viewField($entity->get('field_event_image'), 'full');
+      }
+    }
+  }
+} 
