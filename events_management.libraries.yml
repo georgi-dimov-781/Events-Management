@@ -1,0 +1,51 @@
+admin:
+  version: 1.x
+  js:
+    js/admin.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+frontend:
+  version: 1.x
+  css:
+    theme:
+      css/events.css: {}
+  js:
+    js/events.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/once
+
+calendar:
+  version: 1.x
+  css:
+    theme:
+      https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.css: { type: external }
+      css/events-calendar.css: {}
+  js:
+    https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js: { type: external }
+    js/events-calendar.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once
+
+map:
+  version: 1.x
+  css:
+    theme:
+      https://unpkg.com/leaflet@1.9.4/dist/leaflet.css: { type: external }
+      css/events-map.css: {}
+  js:
+    https://unpkg.com/leaflet@1.9.4/dist/leaflet.js: { type: external }
+    js/events-map.js: {}
+  dependencies:
+    - core/jquery
+    - core/drupal
+    - core/drupalSettings
+    - core/once 
