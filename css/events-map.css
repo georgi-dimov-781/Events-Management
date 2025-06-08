@@ -1,0 +1,308 @@
+/* Map View Styles */
+.events-view-navigation {
+  margin-bottom: 2rem;
+}
+
+.view-tabs {
+  display: flex;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.view-tab {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1.5rem;
+  text-decoration: none;
+  color: #666;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s ease;
+  margin-right: 0.5rem;
+}
+
+.view-tab:hover {
+  color: #1a73e8;
+  border-bottom-color: #bbd0ff;
+}
+
+.view-tab.active {
+  color: #1a73e8;
+  border-bottom-color: #1a73e8;
+  font-weight: 600;
+}
+
+.tab-icon {
+  display: inline-flex;
+  margin-right: 0.5rem;
+}
+
+.tab-icon svg {
+  width: 1.2rem;
+  height: 1.2rem;
+  fill: currentColor;
+}
+
+.events-map-wrapper {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.map-header {
+  margin-bottom: 2rem;
+  text-align: center;
+}
+
+.page-title {
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.map-description {
+  color: #666;
+  font-size: 1.1rem;
+}
+
+.events-map-container {
+  display: flex;
+  margin-bottom: 2rem;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  background-color: #fff;
+}
+
+#events-map {
+  flex: 1;
+  height: 650px;
+}
+
+.map-sidebar {
+  width: 300px;
+  border-left: 1px solid #e0e0e0;
+  overflow-y: auto;
+  max-height: 650px;
+}
+
+.map-sidebar h3 {
+  margin: 0;
+  padding: 1rem;
+  font-size: 1.2rem;
+  background-color: #f8f9fa;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+#map-events-list {
+  padding: 1rem;
+}
+
+.map-event-item {
+  padding: 0.75rem;
+  border-bottom: 1px solid #e0e0e0;
+  cursor: pointer;
+  transition: background-color 0.2s ease;
+}
+
+.map-event-item:hover {
+  background-color: #f5f7f9;
+}
+
+.map-event-item.active {
+  background-color: #e8f0fe;
+}
+
+.map-event-title {
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.map-event-date,
+.map-event-location {
+  font-size: 0.9rem;
+  color: #666;
+  margin-bottom: 0.25rem;
+}
+
+.map-event-date::before,
+.map-event-location::before {
+  content: '';
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  margin-right: 6px;
+  background-size: contain;
+  background-repeat: no-repeat;
+  vertical-align: text-bottom;
+}
+
+.map-event-date::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 448 512'%3E%3Cpath fill='%23666' d='M152 24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H64C28.7 64 0 92.7 0 128v320c0 35.3 28.7 64 64 64H384c35.3 0 64-28.7 64-64V128c0-35.3-28.7-64-64-64H344V24c0-13.3-10.7-24-24-24s-24 10.7-24 24V64H152V24zM48 192H400V448c0 8.8-7.2 16-16 16H64c-8.8 0-16-7.2-16-16V192zm128 64c-13.3 0-24 10.7-24 24v96c0 13.3 10.7 24 24 24h96c13.3 0 24-10.7 24-24V280c0-13.3-10.7-24-24-24H176z'/%3E%3C/svg%3E");
+}
+
+.map-event-location::before {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='%23666' d='M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z'/%3E%3C/svg%3E");
+}
+
+/* Map legend */
+.map-legend {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.map-legend h3 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+.map-legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 0.75rem;
+}
+
+.map-marker-icon {
+  display: inline-block;
+  width: 25px;
+  height: 40px;
+  margin-right: 10px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='%231a73e8' d='M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z'/%3E%3C/svg%3E");
+  background-size: contain;
+  background-repeat: no-repeat;
+  background-position: center;
+}
+
+.map-marker-icon.active {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 384 512'%3E%3Cpath fill='%23ff6b6b' d='M215.7 499.2C267 435 384 279.4 384 192C384 86 298 0 192 0S0 86 0 192c0 87.4 117 243 168.3 307.2c12.3 15.3 35.1 15.3 47.4 0zM192 128a64 64 0 1 1 0 128 64 64 0 1 1 0-128z'/%3E%3C/svg%3E");
+}
+
+.map-legend-text {
+  font-size: 0.95rem;
+  color: #555;
+}
+
+/* Event popup */
+.event-popup {
+  min-width: 200px;
+  max-width: 300px;
+}
+
+.popup-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+  color: #333;
+}
+
+.popup-date,
+.popup-location,
+.popup-category {
+  margin-bottom: 0.5rem;
+  font-size: 0.9rem;
+  color: #666;
+}
+
+.popup-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  background-color: #1a73e8;
+  color: #fff;
+  text-decoration: none;
+  border-radius: 4px;
+  font-size: 0.85rem;
+  transition: background-color 0.2s ease;
+}
+
+.popup-link:hover {
+  background-color: #1565c0;
+}
+
+/* Leaflet customizations */
+.leaflet-popup-content-wrapper {
+  border-radius: 8px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.2);
+}
+
+.leaflet-popup-content {
+  margin: 12px 14px;
+}
+
+.leaflet-popup-tip {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.16);
+}
+
+.leaflet-control-zoom {
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.leaflet-touch .leaflet-control-zoom {
+  border: none;
+}
+
+.leaflet-bar a {
+  background-color: #fff;
+  color: #333;
+  transition: all 0.2s ease;
+}
+
+.leaflet-bar a:hover {
+  background-color: #f8f9fa;
+  color: #1a73e8;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 992px) {
+  .events-map-container {
+    flex-direction: column;
+  }
+  
+  .map-sidebar {
+    width: 100%;
+    max-height: 300px;
+    border-left: none;
+    border-top: 1px solid #e0e0e0;
+  }
+  
+  #events-map {
+    height: 450px;
+  }
+}
+
+@media (max-width: 768px) {
+  .events-map-wrapper {
+    padding: 0 1rem;
+  }
+  
+  #events-map {
+    height: 350px;
+  }
+}
+
+@media (max-width: 480px) {
+  .view-tab {
+    padding: 0.5rem 0.75rem;
+    font-size: 0.9rem;
+  }
+  
+  .tab-icon {
+    margin-right: 0.25rem;
+  }
+  
+  .tab-icon svg {
+    width: 1rem;
+    height: 1rem;
+  }
+  
+  .map-sidebar h3 {
+    padding: 0.75rem;
+    font-size: 1.1rem;
+  }
+  
+  #map-events-list {
+    padding: 0.75rem;
+  }
+} 
